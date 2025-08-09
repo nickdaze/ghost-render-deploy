@@ -1,0 +1,72 @@
+services:
+  # MySQL Database Service
+  - type: pserv
+    name: ghost-mysql
+    runtime: docker
+    dockerfilePath: ./mysql/Dockerfile
+    dockerContext: .
+    disk:
+      name: mysql-data
+      mountPath: /var/lib/mysql
+      sizeGB: 10
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+      - key: MYSQL_DATABASE
+        value: ghost
+      - key: MYSQL_USER
+        value: ghost
+      - key: MYSQL_PASSWORD
+        generateValue: true
+
+  # Ghost Web Service
+  - type: web
+    name: ghost-blog
+    runtime: image
+    image:
+      url: ghost:latest
+    disk:
+      name: ghost-content
+      mountPath: /var/lib/ghost/content
+      sizeGB: 10
+    envVars:
+      # Database configuration
+      - key: database__client
+        value: mysql
+      - key: database__connection__host
+        fromService:
+          name: ghost-mysql
+          type: pserv
+          property: host
+      - key: database__connection__port
+        value: 3306
+      - key: database__connection__user
+        value: ghost
+      - key: database__connection__password
+        fromService:
+          name: ghost-mysql
+          type: pserv
+          envVarKey: MYSQL_PASSWORD
+      - key: database__connection__database
+        value: ghost
+      
+      # Site configuration
+      - key: url
+        value: https://ghost-blog.onrender.com
+      
+      # Node environment
+      - key: NODE_ENV
+        value: production
+      
+      # Optional: Mail configuration (uncomment and configure if needed)
+      # - key: mail__transport
+      #   value: SMTP
+      # - key: mail__options__service
+      #   value: Mailgun
+      # - key: mail__options__auth__user
+      #   value: your-mailgun-username
+      # - key: mail__options__auth__pass
+      #   value: your-mailgun-password
+      
+    healthCheckPath: /
+    autoDeploy: false
